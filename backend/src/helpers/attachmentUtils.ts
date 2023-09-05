@@ -9,7 +9,7 @@ export class AttachmentUtils {
   constructor(
     private readonly s3 = new XAWS.S3({ signatureVersion: 'v4' }),
     private readonly bucket = process.env.ATTACHMENT_S3_BUCKET,
-    private readonly signedUrlExpiration = process.env.SIGNED_URL_EXPIRATION
+    private readonly signedUrlExpiration = parseInt(process.env.SIGNED_URL_EXPIRATION)
   ) {}
 
   getAttachmentUrl(key: string): string {

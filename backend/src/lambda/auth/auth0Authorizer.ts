@@ -1,7 +1,7 @@
 import { CustomAuthorizerEvent, CustomAuthorizerResult } from 'aws-lambda'
 import 'source-map-support/register'
 
-import { verify } from 'jsonwebtoken'
+import { Jwt, decode, verify } from 'jsonwebtoken'
 import { createLogger } from '../../utils/logger'
 import axios from 'axios'
 import * as https from 'https'
@@ -13,6 +13,7 @@ const logger = createLogger('auth')
 // to verify JWT token signature.
 // To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Endpoints -> JSON Web Key Set
 const jwksUrl = process.env.JWKS_URL
+let cachedCertificate: string
 
 export const handler = async (
   event: CustomAuthorizerEvent
@@ -56,20 +57,13 @@ export const handler = async (
 
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
   const token = getToken(authHeader)
-  // const jwt: Jwt = decode(token, { complete: true }) as Jwt
+  const jwt: Jwt = decode(token, { complete: true }) as Jwt
 
   // TODO: Implement token verification
   // You should implement it similarly to how it was implemented for the exercise for the lesson 5
   // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
-  const jwksRequest = await axios.get(jwksUrl, {
-    httpsAgent: new https.Agent({
-      rejectUnauthorized: true
-    })
-  })
-  const jwks = jwksRequest.data.keys()
-  const cert = jwks.map((key) => {
-    return { kid: key.kid, nbf: key.nbf, publicKey: certToPEM(key.x5c[0]) }
-  })
+  const kid = jwt.header.kid; // Get the unique identifier for the key
+  const cert = await getCertificate(kid)
 
   return verify(token, cert, { algorithms: ['RS256'] }) as JwtPayload
 }
@@ -86,8 +80,54 @@ function getToken(authHeader: string): string {
   return token
 }
 
-function certToPEM(cert) {
-  cert = cert.match(/.{1,64}/g).join('\n')
+async function getCertificate(kid: string): Promise<string> {
+  if (cachedCertificate) return cachedCertificate;
+
+  logger.info(`Fetching certificate from Auth0`);
+
+  const jwks = await axios.get(jwksUrl, {
+    httpsAgent: new https.Agent({
+      rejectUnauthorized: true
+    })
+  })
+  const keys = jwks.data.keys
+
+  if (!keys || !keys.length){
+    throw new Error('The JWKS endpoint did not contain any keys');
+  }
+
+  const signingKeys = getSigningKeys(keys);
+
+  if (!signingKeys.length){
+    throw new Error('The JWKS endpoint did not contain any signature verification keys');
+  }
+  
+  const key = keys.find(key => key.kid == kid);
+
+  const pub = key.x5c[0]  // Get the public key
+  cachedCertificate = certToPEM(pub)
+
+  logger.info('Valid certificate was downloaded', cachedCertificate)
+
+  return cachedCertificate
+}
+
+function getSigningKeys(keys) {
+  /**
+   * Get all the Keys intended for verifying a JWT with the keytype of RSA
+   */
+  return keys.filter(
+    key => key.use === 'sig'
+           && key.kty === 'RSA'
+           && key.alg === 'RS256'
+           && key.n
+           && key.e
+           && key.kid
+           && (key.x5c && key.x5c.length)
+  )
+}
+
+function certToPEM(cert: string): string {
   cert = `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----\n`
   return cert
 }
