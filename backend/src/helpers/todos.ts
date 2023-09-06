@@ -43,7 +43,7 @@ export const updateTodo = async (
   request: UpdateTodoRequest
 ) => {
   logger.info(`updateTodo`)
-  const item: TodoItem = await todoAccess.getTodo(todoId)
+  let item: TodoItem = await todoAccess.getTodo(todoId)
   if (!item) {
     logger.info(`updateTodo`)
     return new createError.NotFound()
@@ -52,7 +52,8 @@ export const updateTodo = async (
     logger.info(`updateTodo - userId ${userId} - Forbidden`)
     return new createError.Forbidden()
   }
-  await todoAccess.updateTodo(todoId, request as TodoUpdate)
+  item = { ...item, ...request }
+  await todoAccess.updateTodo(todoId, item as TodoUpdate)
   return item
 }
 
