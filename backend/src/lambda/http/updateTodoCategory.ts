@@ -4,26 +4,21 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import * as middy from 'middy'
 import { cors, httpErrorHandler } from 'middy/middlewares'
 
-import {
-  generateSignedUrl,
-  uploadAttachmentUrl
-} from '../../businessLogic/todos'
+import { updateTodoCategory } from '../../businessLogic/todos'
+import { UpdateCategoryRequest } from '../../requests/UpdateCategoryRequest'
 import { getUserId } from '../utils'
-import * as uuid from 'uuid'
 
 export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     const todoId = event.pathParameters.todoId
+    const request: UpdateCategoryRequest = JSON.parse(event.body)
     const userId = getUserId(event)
-    const attachmentId = uuid.v4()
-
-    const url = await generateSignedUrl(attachmentId)
-    await uploadAttachmentUrl(userId, todoId, attachmentId)
+    const item = await updateTodoCategory(userId, todoId, request.category)
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        url
+        item
       })
     }
   }
