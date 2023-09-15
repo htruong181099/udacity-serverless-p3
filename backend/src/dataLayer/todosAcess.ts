@@ -110,4 +110,75 @@ export class TodosAccess {
       })
       .promise()
   }
+
+  async deleteAttachment(todoId: string) {
+    logger.info(`deleteAttachment - todoId ${todoId}`)
+
+    await this.docClient
+      .update({
+        TableName: this.TODOS_TABLE,
+        Key: { todoId },
+        UpdateExpression: 'set attachmentUrl = :attachmentUrl',
+        ExpressionAttributeValues: {
+          ':attachmentUrl': null
+        }
+      })
+      .promise()
+  }
+
+  async getTodosByCategory(userId: string, category: string): Promise<TodoItem[]> {
+    logger.info(`getTodosByCategory - userId ${userId} - category ${category}`)
+
+    const result = await this.docClient
+      .query({
+        TableName: this.TODOS_TABLE,
+        IndexName: this.TODOS_USER_INDEX,
+        KeyConditionExpression: 'userId = :userId',
+        FilterExpression: 'category = :category',
+        ExpressionAttributeValues: {
+          ':userId': userId,
+          ':category': category,
+        }
+      })
+      .promise()
+
+    const items = result.Items
+
+    return items as TodoItem[]
+  }
+
+  async setTodoCategory(todoId: string, category: string) {
+    logger.info(`setTodoCategory - todoId ${todoId} - category ${category}`)
+
+    await this.docClient
+    .update({
+      TableName: this.TODOS_TABLE,
+      Key: {
+        todoId
+      },
+      UpdateExpression: 'set #category = :category',
+      ExpressionAttributeNames: {
+        '#category': 'category'
+      },
+      ExpressionAttributeValues: {
+        ':category': category
+      }
+    })
+    .promise()
+  }
+
+  async deleteCategory(todoId: string) {
+    logger.info(`deleteCategory - todoId ${todoId}`)
+
+    await this.docClient
+      .update({
+        TableName: this.TODOS_TABLE,
+        Key: { todoId },
+        UpdateExpression: 'set category = :category',
+        ExpressionAttributeValues: {
+          ':category': null
+        }
+      })
+      .promise()
+  }
 }

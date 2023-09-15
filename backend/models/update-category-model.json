@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "updateCategory",
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": ["category"],
+  "additionalProperties": false
+}

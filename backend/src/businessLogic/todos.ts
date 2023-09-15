@@ -101,3 +101,70 @@ export const generateSignedUrl = async (
   const url = await attachmentUtils.getSignedUrl(attachmentId)
   return url
 }
+
+export const deleteAttachmentUrl = async (
+  userId: string,
+  todoId: string
+) => {
+  logger.info(
+    `deleteAttachmentUrl - userId ${userId} - todoId ${todoId}`
+  )
+  const item = await todoAccess.getTodo(todoId)
+  if (!item) {
+    logger.info(`deleteAttachmentUrl`)
+    return new createError.NotFound()
+  }
+  if (userId != item.userId) {
+    logger.info(
+      `deleteAttachmentUrl - userId ${userId} - todoId ${todoId} - Forbidden`
+    )
+    return new createError.Forbidden()
+  }
+
+  await todoAccess.deleteAttachment(todoId)
+}
+
+export const getTodosByCategory = async (userId: string, category: string): Promise<TodoItem[]> => {
+  logger.info(`getTodosByCategory - userId ${userId} - category ${category}`)
+  return await todoAccess.getTodosByCategory(userId, category)
+}
+
+export const updateTodoCategory = async (
+  userId: string,
+  todoId: string,
+  category: string
+) => {
+  logger.info(`updateTodoCategory - userId ${userId} - todoId ${todoId}`)
+  let item: TodoItem = await todoAccess.getTodo(todoId)
+  if (!item) {
+    logger.info(`updateTodoCategory`)
+    return new createError.NotFound()
+  }
+  if (userId != item.userId) {
+    logger.info(`updateTodoCategory - userId ${userId} - Forbidden`)
+    return new createError.Forbidden()
+  }
+  await todoAccess.setTodoCategory(todoId, category)
+}
+
+export const deleteTodoCategory = async (
+  userId: string,
+  todoId: string
+) => {
+  logger.info(
+    `deleteTodoCategory - userId ${userId} - todoId ${todoId}`
+  )
+  const item = await todoAccess.getTodo(todoId)
+  if (!item) {
+    logger.info(`deleteAttachmentUrl`)
+    return new createError.NotFound()
+  }
+  if (userId != item.userId) {
+    logger.info(
+      `deleteTodoCategory - userId ${userId} - todoId ${todoId} - Forbidden`
+    )
+    return new createError.Forbidden()
+  }
+
+  await todoAccess.deleteCategory(todoId)
+}
